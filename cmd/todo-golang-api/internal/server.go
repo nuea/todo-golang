@@ -35,6 +35,10 @@ func (s *Server) Run() {
 	s.gin.Run(":" + s.cfg.System.Port)
 }
 
+func (s *Server) Route() *gin.Engine {
+	return s.gin
+}
+
 // ProvideServer
 func ProvideServer(cfg *config.AppConfig) *Server {
 	ge := gin.New()

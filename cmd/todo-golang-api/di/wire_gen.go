@@ -9,16 +9,40 @@ package di
 import (
 	"github.com/google/wire"
 	"github.com/nuea/todo-golang/cmd/todo-golang-api/internal"
+	"github.com/nuea/todo-golang/cmd/todo-golang-api/internal/handler"
+	todolist2 "github.com/nuea/todo-golang/cmd/todo-golang-api/internal/handler/todolist"
+	"github.com/nuea/todo-golang/cmd/todo-golang-api/internal/router"
+	"github.com/nuea/todo-golang/internal/client"
+	"github.com/nuea/todo-golang/internal/client/mongo"
 	"github.com/nuea/todo-golang/internal/config"
+	"github.com/nuea/todo-golang/internal/repository"
+	"github.com/nuea/todo-golang/internal/repository/todolist"
 )
 
 // Injectors from di.go:
 
 func InitializeContainer(cfg *config.AppConfig) (*Container, error) {
 	server := internal.ProvideServer(cfg)
+	mongoClient, err := mongo.ProvideMongoClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+	clientClient := &client.Client{
+		MongoClient: mongoClient,
+	}
+	todolistRepository := todolist.ProvideTodolistRepository(clientClient)
+	repositoryRepository := &repository.Repository{
+		Todolist: todolistRepository,
+	}
+	todolistHandler := todolist2.ProvideTodolist(repositoryRepository)
+	handlerHandler := &handler.Handler{
+		Todolist: todolistHandler,
+	}
+	route := router.ProvideRoute(server, handlerHandler)
 	container := &Container{
 		cfg:    cfg,
 		server: server,
+		routes: route,
 	}
 	return container, nil
 }
@@ -28,14 +52,15 @@ func InitializeContainer(cfg *config.AppConfig) (*Container, error) {
 type Container struct {
 	cfg    *config.AppConfig
 	server *internal.Server
+	routes *router.Route
 }
 
 func (c *Container) Run() {
 	c.server.Run()
 }
 
-var ContainerSet = wire.NewSet(internal.ProvideServer)
+var BaseSet = wire.NewSet(internal.ProvideServer, client.ClientSet, wire.Struct(new(Container), "*"), wire.Struct(new(client.Client), "*"), wire.Struct(new(handler.Handler), "*"), wire.Struct(new(repository.Repository), "*"))
 
 var MainSet = wire.NewSet(
-	ContainerSet, wire.Struct(new(Container), "*"),
+	BaseSet, repository.RepositorySet, router.ProvideRoute, handler.HandlerSet,
 )

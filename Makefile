@@ -9,6 +9,9 @@ gen: ## Genarate google wire
 run:  ## Running a server to use configs in environment development.
 	GIN_MODE=debug ENV=local go run cmd/todo-golang-api/main.go
 
+dev:
+	GIN_MODE=debug ENV=local nodemon --exec go run cmd/todo-golang-api/main.go --signal SIGTERM
+
 run_prod:  ## Running a server to use configs in environment production.
 	GO111MODULE=on GIN_MODE=release ENV=production go run main.go
 
